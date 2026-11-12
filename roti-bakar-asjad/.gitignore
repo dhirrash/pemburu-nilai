@@ -1,0 +1,5 @@
+target/
+nbproject/private/
+.idea/
+*.class
+.DS_Store
