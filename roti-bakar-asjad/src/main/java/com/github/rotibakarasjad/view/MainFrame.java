@@ -49,7 +49,7 @@ public class MainFrame extends JFrame {
     }
     
     private void initEvents() {
-        productTable.addActionListener(e -> applyFilter());
+        categoryFilter.addActionListener(e -> applyFilter());
 
         productTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -73,7 +73,7 @@ public class MainFrame extends JFrame {
 
     // Mengisi tabel sesuai kategori yang dipilih
     private void applyFilter() {
-        String selected = String.valueOf(productTable.getSelectedItem());
+        String selected = String.valueOf(categoryFilter.getSelectedItem());
         DefaultTableModel model = (DefaultTableModel) productTable.getModel();
         model.setRowCount(0);
 
@@ -126,7 +126,7 @@ public class MainFrame extends JFrame {
         private void showError(String message) {
             JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
         }
-    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -233,7 +233,11 @@ public class MainFrame extends JFrame {
     }//GEN-LAST:event_cartBtnActionPerformed
 
     public static void main(String args[]) {
-        
+        java.awt.EventQueue.invokeLater(() -> {
+            MainFrame f = new MainFrame();
+            f.setLocationRelativeTo(null);
+            f.setVisible(true);
+        });
     }
     
     /**

@@ -59,6 +59,37 @@ public class CategoryRepository {
         }
     }
 
+    public void update(Category category) throws SQLException {
+        String sql = "UPDATE categories SET name = ? WHERE id = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, category.getName());
+            stmt.setInt(2, category.getId());
+            stmt.executeUpdate();
+        }
+    }
+
+    /** Gagal (SQLException) jika kategori masih dipakai produk (FK RESTRICT). */
+    public void delete(int id) throws SQLException {
+        String sql = "DELETE FROM categories WHERE id = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+    }
+
+    public int countProductsByCategory(int categoryId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM products WHERE category_id = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, categoryId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
     private Category map(ResultSet rs) throws SQLException {
         Category category = new Category();
         category.setId(rs.getInt("id"));

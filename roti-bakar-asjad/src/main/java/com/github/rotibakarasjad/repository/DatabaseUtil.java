@@ -18,4 +18,36 @@ public final class DatabaseUtil {
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USERNAME, PASSWORD);
     }
+
+    /** Pekerjaan yang dijalankan di dalam satu transaksi database. */
+    @FunctionalInterface
+    public interface TxWork<T> {
+        T run(Connection conn) throws SQLException;
+    }
+
+    /**
+     * Menjalankan work dalam satu transaksi.
+     * Sukses -> commit. Exception apa pun -> rollback lalu exception dilempar ulang.
+     */
+    public static <T> T inTransaction(TxWork<T> work) throws SQLException {
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                T result = work.run(conn);
+                conn.commit();
+                return result;
+            } catch (SQLException | RuntimeException e) {
+                rollbackQuietly(conn);
+                throw e;
+            }
+        }
+    }
+
+    private static void rollbackQuietly(Connection conn) {
+        try {
+            conn.rollback();
+        } catch (SQLException ignored) {
+            // koneksi akan ditutup oleh try-with-resources
+        }
+    }
 }

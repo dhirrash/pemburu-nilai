@@ -1,86 +1,59 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/UnitTests/JUnit5TestClass.java to edit this template
- */
 package com.github.rotibakarasjad.repository;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
 import com.github.rotibakarasjad.entity.Category;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.List;
-import java.util.Optional;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
-/**
- *
- * @author NADHIR
- */
-public class CategoryRepositoryTest {
-    
-    public CategoryRepositoryTest() {
-    }
-    
+/* Butuh MySQL hidup dengan database roti_bakar_asjad (hasil roti_bakar_asjad.sql). */
+class CategoryRepositoryTest {
+
+    private final CategoryRepository repo = new CategoryRepository();
+
     @BeforeAll
-    public static void setUpClass() {
-    }
-    
-    @AfterAll
-    public static void tearDownClass() {
-    }
-    
-    @BeforeEach
-    public void setUp() {
-    }
-    
-    @AfterEach
-    public void tearDown() {
+    static void cekDatabase() {
+        try (Connection c = DatabaseUtil.getConnection()) {
+            assumeTrue(c.isValid(2));
+        } catch (Exception e) {
+            assumeTrue(false, "Database tidak tersedia: " + e.getMessage());
+        }
     }
 
-    /**
-     * Test of findAll method, of class CategoryRepository.
-     */
     @Test
-    public void testFindAll() throws Exception {
-        System.out.println("findAll");
-        CategoryRepository instance = new CategoryRepository();
-        List<Category> expResult = null;
-        List<Category> result = instance.findAll();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    void findAllMengembalikanKategoriSeed() throws Exception {
+        List<Category> all = repo.findAll();
+        assertTrue(all.size() >= 4);
     }
 
-    /**
-     * Test of findById method, of class CategoryRepository.
-     */
     @Test
-    public void testFindById() throws Exception {
-        System.out.println("findById");
-        int id = 0;
-        CategoryRepository instance = new CategoryRepository();
-        Optional<Category> expResult = null;
-        Optional<Category> result = instance.findById(id);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    void findByIdDanTidakDitemukan() throws Exception {
+        assertEquals("Roti Bakar Manis", repo.findById(1).orElseThrow().getName());
+        assertTrue(repo.findById(-1).isEmpty());
     }
 
-    /**
-     * Test of insert method, of class CategoryRepository.
-     */
     @Test
-    public void testInsert() throws Exception {
-        System.out.println("insert");
-        Category category = null;
-        CategoryRepository instance = new CategoryRepository();
-        int expResult = 0;
-        int result = instance.insert(category);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+    void insertUpdateDelete() throws Exception {
+        Category c = new Category("TEST-" + System.nanoTime());
+        int id = repo.insert(c);
+        assertTrue(id > 0);
+        try {
+            c.setName(c.getName() + "-ubah");
+            repo.update(c);
+            assertEquals(c.getName(), repo.findById(id).orElseThrow().getName());
+            assertEquals(0, repo.countProductsByCategory(id));
+        } finally {
+            repo.delete(id);
+        }
+        assertTrue(repo.findById(id).isEmpty());
     }
-    
+
+    @Test
+    void countProductsByCategoryKategoriSeed() throws Exception {
+        assertTrue(repo.countProductsByCategory(1) >= 17);
+    }
 }
