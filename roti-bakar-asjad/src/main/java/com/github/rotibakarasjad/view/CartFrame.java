@@ -39,8 +39,12 @@ public class CartFrame extends JFrame {
         cartTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }
 
+    String[] methods = java.util.Arrays.stream(PaymentMethod.values())
+                                   .map(Enum::name)
+                                   .toArray(String[]::new);
+    
     private void initPaymentCombo() {
-        paymentMethodCombo.setModel(new javax.swing.DefaultComboBoxModel<>(PaymentMethod.values()));
+        paymentMethodCombo.setModel(new javax.swing.DefaultComboBoxModel<>(methods));
     }
 
     private void initEvents() {
@@ -132,7 +136,7 @@ public class CartFrame extends JFrame {
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
-}
+
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 

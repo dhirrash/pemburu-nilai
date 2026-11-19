@@ -104,7 +104,7 @@ public class OrderHistoryFrame extends JFrame {
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
-}
+
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -211,6 +211,7 @@ public class OrderHistoryFrame extends JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new OrderHistoryFrame().setVisible(true));
     }
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(OrderHistoryFrame.class.getName());
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton backBtn;
