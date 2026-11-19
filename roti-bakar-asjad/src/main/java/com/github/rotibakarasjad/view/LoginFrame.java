@@ -128,6 +128,11 @@ public class LoginFrame extends javax.swing.JFrame {
             javax.swing.JOptionPane.showMessageDialog(this, "Membuka halaman Kasir (MainFrame)...");
         }
         
+        MainFrame mainFrame = new MainFrame();
+        mainFrame.setLocationRelativeTo(null); // Posisikan di tengah layar
+        mainFrame.setVisible(true);            // Tampilkan MainFrame
+        this.dispose();                        // Tutup jendela LoginFrame
+        
     } catch (Exception e) {
         javax.swing.JOptionPane.showMessageDialog(this, e.getMessage(), "Login Gagal", javax.swing.JOptionPane.ERROR_MESSAGE);
         txtPassword.setText("");
