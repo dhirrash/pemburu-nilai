@@ -68,6 +68,55 @@ public class ProductRepository {
         }
     }
 
+    /* Versi dengan Connection, dipakai di dalam transaksi. */
+    public Optional<Product> findById(Connection conn, int id) throws SQLException {
+        return findOne(conn, BASE_SELECT + "WHERE p.id = ?", id);
+    }
+
+    /* Mengunci baris produk (SELECT ... FOR UPDATE). Hanya untuk dalam transaksi. */
+    public Optional<Product> findByIdForUpdate(Connection conn, int id) throws SQLException {
+        return findOne(conn, BASE_SELECT + "WHERE p.id = ? FOR UPDATE", id);
+    }
+
+    private Optional<Product> findOne(Connection conn, String sql, int id) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        }
+    }
+
+    /* Mengubah data produk. Stok TIDAK diubah di sini (pakai updateStock). */
+    public void update(Product product) throws SQLException {
+        String sql = "UPDATE products SET category_id = ?, name = ?, description = ?, "
+                   + "price = ?, is_active = ? WHERE id = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, product.getCategoryId());
+            stmt.setString(2, product.getName());
+            stmt.setString(3, product.getDescription());
+            stmt.setBigDecimal(4, product.getPrice());
+            stmt.setBoolean(5, product.isActive());
+            stmt.setInt(6, product.getId());
+            stmt.executeUpdate();
+        }
+    }
+
+    /*
+     * Menambah (delta positif) atau mengurangi (delta negatif) stok secara atomik.
+     * Mengembalikan false jika stok akan menjadi negatif (tidak ada yang berubah).
+     */
+    public boolean updateStock(Connection conn, int productId, int delta) throws SQLException {
+        String sql = "UPDATE products SET stock = stock + ? WHERE id = ? AND stock + ? >= 0";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, delta);
+            stmt.setInt(2, productId);
+            stmt.setInt(3, delta);
+            return stmt.executeUpdate() == 1;
+        }
+    }
+
     private List<Product> queryList(String sql) throws SQLException {
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);

@@ -14,6 +14,8 @@ import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
 public class OrderHistoryFrame extends JFrame {
+        private static final java.util.logging.Logger logger =
+            java.util.logging.Logger.getLogger(OrderHistoryFrame.class.getName());
 
     private static final DateTimeFormatter DATE_INPUT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_OUTPUT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
@@ -32,6 +34,8 @@ public class OrderHistoryFrame extends JFrame {
 
     public OrderHistoryFrame() {
         initComponents();   // dibuat oleh Form Editor
+        dateFromField.setText("");
+        dateToField.setText("");
         initTable();
         initEvents();
         applyFilter(null, null);

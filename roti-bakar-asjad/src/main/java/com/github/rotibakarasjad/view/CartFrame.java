@@ -21,7 +21,8 @@ public class CartFrame extends JFrame {
     private BigDecimal total = BigDecimal.ZERO;
 
     public CartFrame() {
-        initComponents();   // dibuat oleh Form Editor
+        initComponents();
+        paidAmountField.setText("");
         initTable();
         initPaymentCombo();
         initEvents();
@@ -39,12 +40,10 @@ public class CartFrame extends JFrame {
         cartTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }
 
-    String[] methods = java.util.Arrays.stream(PaymentMethod.values())
-                                   .map(Enum::name)
-                                   .toArray(String[]::new);
-    
-    private void initPaymentCombo() {
-        paymentMethodCombo.setModel(new javax.swing.DefaultComboBoxModel<>(methods));
+        private void initPaymentCombo() {
+        String[] names = java.util.Arrays.stream(PaymentMethod.values())
+                .map(Enum::name).toArray(String[]::new);
+        paymentMethodCombo.setModel(new javax.swing.DefaultComboBoxModel<>(names));
     }
 
     private void initEvents() {
@@ -250,6 +249,11 @@ public class CartFrame extends JFrame {
     }//GEN-LAST:event_paidAmountFieldActionPerformed
 
 public static void main(String args[]) {
+    java.awt.EventQueue.invokeLater(() -> {
+            CartFrame f = new CartFrame();
+            f.setLocationRelativeTo(null);
+            f.setVisible(true);
+        });
         }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables

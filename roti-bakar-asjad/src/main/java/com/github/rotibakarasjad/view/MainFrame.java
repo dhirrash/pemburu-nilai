@@ -233,7 +233,11 @@ public class MainFrame extends JFrame {
     }//GEN-LAST:event_cartBtnActionPerformed
 
     public static void main(String args[]) {
-        
+        java.awt.EventQueue.invokeLater(() -> {
+            MainFrame f = new MainFrame();
+            f.setLocationRelativeTo(null);
+            f.setVisible(true);
+        });
     }
     
     /**
