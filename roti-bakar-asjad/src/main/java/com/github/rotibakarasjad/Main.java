@@ -6,6 +6,7 @@ import javax.swing.UIManager;
 
 public class Main {
 
+    
     public static void main(String[] args) {
         // Tampilan mengikuti Nimbus jika tersedia
         try {
