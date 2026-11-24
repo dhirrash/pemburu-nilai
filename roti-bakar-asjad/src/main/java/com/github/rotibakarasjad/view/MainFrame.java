@@ -4,50 +4,54 @@
  */
 package com.github.rotibakarasjad.view;
 
+import com.github.rotibakarasjad.entity.Product;
+import com.github.rotibakarasjad.service.OrderService;
+import com.github.rotibakarasjad.service.ProductService;
 import com.github.rotibakarasjad.util.CurrencyFormatter;
-import java.math.BigDecimal;
+import com.github.rotibakarasjad.util.Session;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 
 /**
  *
  * @author NADHIR
+ */   
+/**
+ * Katalog produk kasir. Data produk dan pesanan diambil lewat service.
  */
 public class MainFrame extends JFrame {
-    
-    private static final Object[][] DUMMY_PRODUCTS = {
-        {1, "Roti Bakar Coklat Keju",   "Roti Bakar", new BigDecimal("15000"), 30},
-        {2, "Roti Bakar Srikaya",       "Roti Bakar", new BigDecimal("12000"), 30},
-        {3, "Roti Bakar Kacang Susu",   "Roti Bakar", new BigDecimal("14000"), 25},
-        {4, "Roti Bakar Pisang Cokelat","Roti Bakar", new BigDecimal("16000"), 20},
-        {5, "Es Teh Manis",             "Minuman",    new BigDecimal("5000"),  100},
-        {6, "Kopi Susu Gula Aren",      "Minuman",    new BigDecimal("18000"), 50},
-        {7, "Kentang Goreng",           "Snack",      new BigDecimal("15000"), 40},
-    };
 
-    /**
-     * Creates new form MainFrame
-     */
+    private final ProductService productService = new ProductService();
+    private final OrderService orderService = new OrderService();
+
+    private List<Product> products = List.of();
+
     public MainFrame() {
-        initComponents();   
+        initComponents();
         initTable();
         initEvents();
-        applyFilter();      
+        quantityField.setText("");
+        loadProducts();
     }
 
     private void initTable() {
-        productTable.setModel(new DefaultTableModel(new Object[]{"ID", "Nama Produk", "Kategori", "Harga", "Stok"}, 0) {
+        productTable.setModel(new DefaultTableModel(
+                new Object[]{"ID", "Nama Produk", "Kategori", "Harga", "Stok"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         });
         productTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        categoryFilter.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{"Semua", "Roti Bakar", "Minuman", "Snack"}));
+        categoryFilter.setModel(new DefaultComboBoxModel<>(
+                new String[]{"Semua", "Roti Bakar", "Minuman", "Snack"}));
     }
-    
+
     private void initEvents() {
         categoryFilter.addActionListener(e -> applyFilter());
 
@@ -60,72 +64,115 @@ public class MainFrame extends JFrame {
             }
         });
 
-        addToCartBtn.addActionListener(e -> addToCartDummy());
-
-        cartBtn.addActionListener(e -> {
-            
-        });
-
-        historyBtn.addActionListener(e -> {
-            
-        });
+        historyBtn.addActionListener(e -> openScreen(new OrderHistoryFrame()));
     }
 
-    // Mengisi tabel sesuai kategori yang dipilih
+    // ================= handler dari Form Editor (isi di sini) =================
+
+    
+
+    // ================= logika =================
+
+    private void openScreen(JFrame next) {
+        next.setLocationRelativeTo(null);
+        next.setVisible(true);
+        dispose();
+    }
+
+    /** Memuat produk aktif di background supaya jendela tidak macet. */
+    private void loadProducts() {
+        setTitle("Roti Bakar Asjad - Memuat produk...");
+
+        new SwingWorker<List<Product>, Void>() {
+            @Override
+            protected List<Product> doInBackground() {
+                return productService.getActiveProducts();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    products = get();
+                    applyFilter();
+                    setTitle("Roti Bakar Asjad");
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    setTitle("Roti Bakar Asjad - Gagal memuat");
+                    Throwable cause = ex.getCause();
+                    Dialogs.handle(MainFrame.this,
+                            cause instanceof Exception e ? e : new IllegalStateException(String.valueOf(cause)));
+                }
+            }
+        }.execute();
+    }
+
+    /** Mengisi tabel sesuai kategori yang dipilih. */
     private void applyFilter() {
         String selected = String.valueOf(categoryFilter.getSelectedItem());
         DefaultTableModel model = (DefaultTableModel) productTable.getModel();
         model.setRowCount(0);
 
-        for (Object[] p : DUMMY_PRODUCTS) {
-            String category = (String) p[2];
-            if (selected.equals("Semua") || selected.equals(category)) {
+        for (Product p : products) {
+            if (selected.equals("Semua") || selected.equals(p.getCategoryName())) {
                 model.addRow(new Object[]{
-                    p[0],
-                    p[1],
-                    category,
-                    CurrencyFormatter.format((BigDecimal) p[3]),
-                    p[4]
+                    p.getId(),
+                    p.getName(),
+                    p.getCategoryName(),
+                    CurrencyFormatter.format(p.getPrice()),
+                    p.getStock()
                 });
             }
         }
     }
-    
-    // Validasi input sudah final, tetapi penyimpanan masih dummy.
-    // Di minggu 2, bagian "TODO" diganti panggilan OrderService.addItem.
-    private void addToCartDummy() {
+
+    /** Memasukkan produk terpilih ke pesanan OPEN kasir yang login. */
+    private void addToCart() {
         int row = productTable.getSelectedRow();
         if (row < 0) {
-            showError("Pilih produk di tabel terlebih dahulu.");
+            Dialogs.error(this, "Pilih produk di tabel terlebih dahulu.");
             return;
         }
 
-        int qty;
         try {
-            qty = Integer.parseInt(quantityField.getText().trim());
-        } catch (NumberFormatException ex) {
-            showError("Kuantitas harus berupa angka bulat.");
-            return;
-        }
-        if (qty <= 0) {
-            showError("Kuantitas harus lebih dari 0.");
-            return;
-        }
+            int quantity = parseQuantity(quantityField.getText());
+            int productId = (Integer) productTable.getValueAt(row, 0);
 
-        int stock = (Integer) productTable.getValueAt(row, 4);
-        if (qty > stock) {
-            showError("Stok tidak mencukupi. Stok tersedia: " + stock);
-            return;
-        }
+            int orderId = orderService.getOrCreateOpenOrder(Session.requireUserId()).getId();
+            orderService.addItem(orderId, productId, quantity);
 
-        // TODO minggu 2: orderService.addItem(orderId, productId, qty);
-        JOptionPane.showMessageDialog(this,"(Dummy) " + qty + " x " + productTable.getValueAt(row, 1) + " masuk keranjang.");
-        quantityField.setText("");
+            quantityField.setText("");
+            Dialogs.info(this, "Produk berhasil dimasukkan ke pesanan.");
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
     }
 
-        private void showError(String message) {
-            JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    private static int parseQuantity(String text) {
+        int quantity;
+        try {
+            quantity = Integer.parseInt(text.trim());
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Kuantitas harus berupa bilangan bulat.");
         }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Kuantitas harus lebih dari 0.");
+        }
+        return quantity;
+    }
+
+    public static void main(String args[]) {
+        java.awt.EventQueue.invokeLater(() -> {
+            MainFrame f = new MainFrame();
+            f.setLocationRelativeTo(null);
+            f.setVisible(true);
+        });
+    }
+
+    // [blok initComponents() dari Form Editor, JANGAN diubah]
+
+    // [deklarasi komponen // Variables declaration, JANGAN diubah]
+
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -221,25 +268,17 @@ public class MainFrame extends JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void quantityFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_quantityFieldActionPerformed
-        // TODO add your handling code here:
+        addToCart();
     }//GEN-LAST:event_quantityFieldActionPerformed
 
     private void addToCartBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addToCartBtnActionPerformed
-        // TODO add your handling code here:
+        addToCart();
     }//GEN-LAST:event_addToCartBtnActionPerformed
 
     private void cartBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cartBtnActionPerformed
-        // TODO add your handling code here:
+        openScreen(new CartFrame());
     }//GEN-LAST:event_cartBtnActionPerformed
 
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(() -> {
-            MainFrame f = new MainFrame();
-            f.setLocationRelativeTo(null);
-            f.setVisible(true);
-        });
-    }
-    
     /**
      * @param args the command line arguments
      */
