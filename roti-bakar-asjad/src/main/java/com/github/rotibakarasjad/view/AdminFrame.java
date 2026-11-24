@@ -4,6 +4,7 @@
  */
 package com.github.rotibakarasjad.view;
 
+import com.github.rotibakarasjad.entity.enums.Role;
 import com.github.rotibakarasjad.service.CategoryService;
 import com.github.rotibakarasjad.service.ProductService;
 import com.github.rotibakarasjad.util.Session;
@@ -25,7 +26,7 @@ public class AdminFrame extends javax.swing.JFrame {
      */
     public AdminFrame() {
         initComponents();
-        if (!Session.isLoggedIn() || !Session.getCurrentUser().getRole().equals("ADMIN")) {
+        if (!Session.isLoggedIn() || Session.getCurrentUser().getRole() != Role.ADMIN) {
             JOptionPane.showMessageDialog(this, "Akses ditolak! Anda bukan Admin.", "Error", JOptionPane.ERROR_MESSAGE);
             dispose();
             new LoginFrame().setVisible(true);

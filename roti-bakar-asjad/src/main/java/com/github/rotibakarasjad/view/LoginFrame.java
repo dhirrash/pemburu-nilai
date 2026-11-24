@@ -7,6 +7,7 @@ package com.github.rotibakarasjad.view;
 import com.github.rotibakarasjad.entity.enums.Role;
 import com.github.rotibakarasjad.entity.User;
 import com.github.rotibakarasjad.service.AuthService;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -102,42 +103,39 @@ public class LoginFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void txtUsernameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtUsernameActionPerformed
-        // TODO add your handling code here:
+        btnLoginActionPerformed(evt);
     }//GEN-LAST:event_txtUsernameActionPerformed
 
     private void btnLoginActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoginActionPerformed
-        // TODO add your handling code here:
         String username = txtUsername.getText().trim();
-    String password = new String(txtPassword.getPassword());
+        String password = new String(txtPassword.getPassword());
 
-    if (username.isEmpty() || password.isEmpty()) {
-        javax.swing.JOptionPane.showMessageDialog(this, "Username dan password tidak boleh kosong!", "Peringatan", javax.swing.JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-
-    AuthService authService = new AuthService();
-    try {
-        User user = authService.login(username, password);
-        javax.swing.JOptionPane.showMessageDialog(this, "Login Berhasil! Selamat datang, " + user.getFullName(), "Sukses", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-        
-        this.dispose(); 
-       
-        if (user.getRole().equals(Role.ADMIN)) {
-            new AdminFrame().setVisible(true);
-        } else {
-            javax.swing.JOptionPane.showMessageDialog(this, "Membuka halaman Kasir (MainFrame)...");
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Username dan password tidak boleh kosong!",
+                    "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
         }
-        
-        MainFrame mainFrame = new MainFrame();
-        mainFrame.setLocationRelativeTo(null); // Posisikan di tengah layar
-        mainFrame.setVisible(true);            // Tampilkan MainFrame
-        this.dispose();                        // Tutup jendela LoginFrame
-        
-    } catch (Exception e) {
-        javax.swing.JOptionPane.showMessageDialog(this, e.getMessage(), "Login Gagal", javax.swing.JOptionPane.ERROR_MESSAGE);
-        txtPassword.setText("");
-        txtPassword.requestFocus();
-    }
+
+        try {
+            User user = new AuthService().login(username, password);
+
+            // hanya satu layar yang dibuka, sesuai role
+            if (user.getRole() == Role.ADMIN) {
+                AdminFrame admin = new AdminFrame();
+                admin.setLocationRelativeTo(null);
+                admin.setVisible(true);
+            } else {
+                MainFrame main = new MainFrame();
+                main.setLocationRelativeTo(null);
+                main.setVisible(true);
+            }
+            dispose();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Login Gagal", JOptionPane.ERROR_MESSAGE);
+            txtPassword.setText("");
+            txtPassword.requestFocus();
+        }
+    
     }//GEN-LAST:event_btnLoginActionPerformed
 
     /**

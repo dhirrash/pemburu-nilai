@@ -32,8 +32,8 @@ class ProductRepositoryTest {
     @Test
     void findByIdMembawaNamaKategori() throws Exception {
         Product p = repo.findById(1).orElseThrow();
-        assertEquals("Choco Crunchy", p.getName());
-        assertEquals("Roti Bakar Manis", p.getCategoryName());
+        assertEquals("Roti Bakar Coklat Keju", p.getName());
+        assertEquals("Roti Bakar", p.getCategoryName());
     }
 
     @Test

@@ -1,15 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.github.rotibakarasjad.util;
 
 import com.github.rotibakarasjad.entity.User;
-/**
- *
- * @author HP ELTEBOOKK
- */
+import com.github.rotibakarasjad.exception.BusinessException;
+
 public class Session {
+
     private static User currentUser;
 
     public static void login(User user) {
@@ -26,5 +21,13 @@ public class Session {
 
     public static boolean isLoggedIn() {
         return currentUser != null;
+    }
+
+    /** Id user yang sedang login. Melempar BusinessException jika belum login. */
+    public static int requireUserId() {
+        if (currentUser == null) {
+            throw new BusinessException("Anda belum login. Silakan login ulang.");
+        }
+        return currentUser.getId();
     }
 }

@@ -1,44 +1,35 @@
 package com.github.rotibakarasjad.view;
 
-import com.github.rotibakarasjad.entity.enums.PaymentMethod;
 import com.github.rotibakarasjad.model.OrderHistoryRow;
+import com.github.rotibakarasjad.service.OrderService;
 import com.github.rotibakarasjad.util.CurrencyFormatter;
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Riwayat pesanan yang sudah dibayar, dengan filter tanggal.
+ */
 public class OrderHistoryFrame extends JFrame {
-        private static final java.util.logging.Logger logger =
-            java.util.logging.Logger.getLogger(OrderHistoryFrame.class.getName());
 
     private static final DateTimeFormatter DATE_INPUT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_OUTPUT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
-    // DATA DUMMY. Diganti OrderHistoryRepository di minggu 2.
-    private final List<OrderHistoryRow> dummyRows = List.of(
-            new OrderHistoryRow(1, "RBA-20261103-0001", "Kasir Pagi",
-                    new BigDecimal("20000"), new BigDecimal("25000"), new BigDecimal("5000"),
-                    PaymentMethod.TUNAI, LocalDateTime.of(2026, 11, 3, 9, 15)),
-            new OrderHistoryRow(2, "RBA-20261103-0002", "Kasir Pagi",
-                    new BigDecimal("18000"), new BigDecimal("18000"), BigDecimal.ZERO,
-                    PaymentMethod.QRIS, LocalDateTime.of(2026, 11, 3, 10, 40)),
-            new OrderHistoryRow(3, "RBA-20261104-0001", "Kasir Pagi",
-                    new BigDecimal("15000"), new BigDecimal("20000"), new BigDecimal("5000"),
-                    PaymentMethod.DEBIT, LocalDateTime.of(2026, 11, 4, 8, 5)));
+    // batas awal dan akhir jika kolom tanggal dikosongkan
+    private static final LocalDate AWAL_DATA = LocalDate.of(2000, 1, 1);
+
+    private final OrderService orderService = new OrderService();
 
     public OrderHistoryFrame() {
-        initComponents();   // dibuat oleh Form Editor
+        initComponents();
         dateFromField.setText("");
         dateToField.setText("");
         initTable();
         initEvents();
-        applyFilter(null, null);
+        applyFilter();
     }
 
     private void initTable() {
@@ -52,47 +43,48 @@ public class OrderHistoryFrame extends JFrame {
     }
 
     private void initEvents() {
-        filterBtn.addActionListener(e -> {
-            try {
-                LocalDate from = parseDateOrNull(dateFromField.getText());
-                LocalDate to = parseDateOrNull(dateToField.getText());
-                if (from != null && to != null && from.isAfter(to)) {
-                    showError("Tanggal awal tidak boleh setelah tanggal akhir.");
-                    return;
-                }
-                applyFilter(from, to);
-            } catch (DateTimeParseException ex) {
-                showError("Format tanggal harus yyyy-MM-dd, contoh: 2026-11-03.");
-            }
-        });
-
+        filterBtn.addActionListener(e -> applyFilter());
         backBtn.addActionListener(e -> {
             MainFrame main = new MainFrame();
             main.setLocationRelativeTo(null);
             main.setVisible(true);
-            this.dispose();
+            dispose();
         });
     }
 
-    // Kosong berarti tidak dibatasi
-    private LocalDate parseDateOrNull(String text) {
-        String trimmed = text == null ? "" : text.trim();
-        return trimmed.isEmpty() ? null : LocalDate.parse(trimmed, DATE_INPUT);
+    // ================= logika =================
+
+    /** Mengambil riwayat dari service. Kolom kosong berarti tidak dibatasi. */
+    private void applyFilter() {
+        try {
+            LocalDate from = parseDate(dateFromField.getText(), AWAL_DATA);
+            LocalDate to = parseDate(dateToField.getText(), LocalDate.now());
+            if (to.isBefore(from)) {
+                throw new IllegalArgumentException("Tanggal awal tidak boleh setelah tanggal akhir.");
+            }
+            fillTable(orderService.getHistory(from, to));
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
     }
 
-    // Filter di memori. Di minggu 2 filter ini dipindah ke query SQL.
-    private void applyFilter(LocalDate from, LocalDate to) {
+    private static LocalDate parseDate(String text, LocalDate defaultValue) {
+        String trimmed = text == null ? "" : text.trim();
+        if (trimmed.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return LocalDate.parse(trimmed, DATE_INPUT);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Format tanggal harus yyyy-MM-dd, contoh: 2026-11-03.");
+        }
+    }
+
+    private void fillTable(List<OrderHistoryRow> rows) {
         DefaultTableModel model = (DefaultTableModel) historyTable.getModel();
         model.setRowCount(0);
 
-        for (OrderHistoryRow r : dummyRows) {
-            LocalDate day = r.paidAt().toLocalDate();
-            if (from != null && day.isBefore(from)) {
-                continue;
-            }
-            if (to != null && day.isAfter(to)) {
-                continue;
-            }
+        for (OrderHistoryRow r : rows) {
             model.addRow(new Object[]{
                 r.orderCode(),
                 r.cashierName(),
@@ -105,9 +97,11 @@ public class OrderHistoryFrame extends JFrame {
         }
     }
 
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-    }
+  
+    // [blok initComponents() dari Form Editor, JANGAN diubah]
+
+    // [deklarasi komponen // Variables declaration, JANGAN diubah]
+
 
 
     /**
@@ -188,7 +182,7 @@ public class OrderHistoryFrame extends JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void dateFromFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dateFromFieldActionPerformed
-        // TODO add your handling code here:
+        applyFilter();
     }//GEN-LAST:event_dateFromFieldActionPerformed
 
     /**
@@ -208,11 +202,9 @@ public class OrderHistoryFrame extends JFrame {
                 }
             }
         } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
+            ex.printStackTrace();
         }
         //</editor-fold>
-
-        /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new OrderHistoryFrame().setVisible(true));
     }
     

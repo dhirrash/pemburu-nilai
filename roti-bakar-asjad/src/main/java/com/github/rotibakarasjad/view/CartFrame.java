@@ -1,23 +1,29 @@
 package com.github.rotibakarasjad.view;
 
+import com.github.rotibakarasjad.entity.Order;
 import com.github.rotibakarasjad.entity.enums.PaymentMethod;
 import com.github.rotibakarasjad.model.OrderItemRow;
+import com.github.rotibakarasjad.service.OrderService;
 import com.github.rotibakarasjad.util.CurrencyFormatter;
+import com.github.rotibakarasjad.util.Session;
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Keranjang (pesanan OPEN) dan pembayaran kasir.
+ */
 public class CartFrame extends JFrame {
 
-    // DATA DUMMY. Diganti hasil OrderService.getOpenOrder di minggu 2.
-    private final List<OrderItemRow> items = new ArrayList<>(List.of(
-            new OrderItemRow(1, 1, "Roti Bakar Coklat Keju", new BigDecimal("15000"), 2),
-            new OrderItemRow(2, 5, "Es Teh Manis", new BigDecimal("5000"), 1)));
+    private final OrderService orderService = new OrderService();
 
+    private int orderId;
+    private List<OrderItemRow> items = List.of();
     private BigDecimal total = BigDecimal.ZERO;
 
     public CartFrame() {
@@ -28,10 +34,10 @@ public class CartFrame extends JFrame {
         initEvents();
         refreshView();
     }
-    
+
     private void initTable() {
         cartTable.setModel(new DefaultTableModel(
-                new Object[]{"ID", "Produk", "Harga", "Qty", "Subtotal"}, 0) {
+                new Object[]{"ID Item", "Produk", "Harga", "Qty", "Subtotal"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -40,101 +46,166 @@ public class CartFrame extends JFrame {
         cartTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }
 
-        private void initPaymentCombo() {
-        String[] names = java.util.Arrays.stream(PaymentMethod.values())
+    private void initPaymentCombo() {
+        String[] names = Arrays.stream(PaymentMethod.values())
                 .map(Enum::name).toArray(String[]::new);
-        paymentMethodCombo.setModel(new javax.swing.DefaultComboBoxModel<>(names));
+        paymentMethodCombo.setModel(new DefaultComboBoxModel<>(names));
     }
 
     private void initEvents() {
-        payBtn.addActionListener(e -> payDummy());
-        removeItemBtn.addActionListener(e -> removeItemDummy());
-        cancelOrderBtn.addActionListener(e -> cancelDummy());
+        payBtn.addActionListener(e -> pay());
+        removeItemBtn.addActionListener(e -> removeItem());
+        cancelOrderBtn.addActionListener(e -> cancelOrder());
 
-        backBtn.addActionListener(e -> {
-            MainFrame main = new MainFrame();
-            main.setLocationRelativeTo(null);
-            main.setVisible(true);
-            this.dispose();
+        // klik dua kali baris untuk mengubah jumlah
+        cartTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    editQuantity();
+                }
+            }
         });
     }
 
-    // Menyegarkan tabel, total, dan kembalian dari daftar item
+    // ================= handler dari Form Editor (isi di sini) =================
+
+
+
+    // ================= logika =================
+
+    /** Mengambil pesanan OPEN kasir beserta itemnya lalu menggambar ulang layar. */
     private void refreshView() {
-        DefaultTableModel model = (DefaultTableModel) cartTable.getModel();
-        model.setRowCount(0);
-
-        total = BigDecimal.ZERO;
-        for (OrderItemRow item : items) {
-            model.addRow(new Object[]{
-                item.orderItemId(),
-                item.productName(),
-                CurrencyFormatter.format(item.unitPrice()),
-                item.quantity(),
-                CurrencyFormatter.format(item.subtotal())
-            });
-            total = total.add(item.subtotal());
-        }
-
-        totalLabel.setText(CurrencyFormatter.format(total));
-        changeLabel.setText("-");
-    }
-
-    // Validasi uang dan hitung kembalian. Penyimpanan ke database
-    // dikerjakan OrderService.payOrder di minggu 2.
-    private void payDummy() {
-        if (items.isEmpty()) {
-            showError("Keranjang masih kosong.");
-            return;
-        }
-
-        BigDecimal paid;
         try {
-            paid = CurrencyFormatter.parse(paidAmountField.getText());
-        } catch (IllegalArgumentException ex) {
-            showError(ex.getMessage());
-            return;
+            orderId = orderService.getOrCreateOpenOrder(Session.requireUserId()).getId();
+            items = orderService.getItems(orderId);
+
+            DefaultTableModel model = (DefaultTableModel) cartTable.getModel();
+            model.setRowCount(0);
+
+            total = BigDecimal.ZERO;
+            for (OrderItemRow item : items) {
+                model.addRow(new Object[]{
+                    item.orderItemId(),
+                    item.productName(),
+                    CurrencyFormatter.format(item.unitPrice()),
+                    item.quantity(),
+                    CurrencyFormatter.format(item.subtotal())
+                });
+                total = total.add(item.subtotal());
+            }
+
+            totalLabel.setText(CurrencyFormatter.format(total));
+            changeLabel.setText("-");
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
         }
-
-        if (paid.compareTo(total) < 0) {
-            showError("Uang yang dibayarkan kurang dari total.");
-            return;
-        }
-
-        BigDecimal change = paid.subtract(total);
-        changeLabel.setText(CurrencyFormatter.format(change));
-
-        // TODO minggu 2: orderService.payOrder(orderId, method, paid);
-        JOptionPane.showMessageDialog(this,
-                "(Dummy) Pembayaran " + paymentMethodCombo.getSelectedItem()
-                + " diterima. Kembalian: " + CurrencyFormatter.format(change));
     }
 
-    private void removeItemDummy() {
+    private void pay() {
+        if (items.isEmpty()) {
+            Dialogs.error(this, "Keranjang masih kosong.");
+            return;
+        }
+
+        try {
+            PaymentMethod method = PaymentMethod.valueOf(
+                    String.valueOf(paymentMethodCombo.getSelectedItem()));
+            BigDecimal paid = CurrencyFormatter.parse(paidAmountField.getText());
+
+            Order paidOrder = orderService.payOrder(orderId, method, paid);
+
+            Dialogs.info(this, "Pembayaran berhasil.\n"
+                    + "Kode pesanan: " + paidOrder.getOrderCode() + "\n"
+                    + "Total: " + CurrencyFormatter.format(paidOrder.getTotalAmount()) + "\n"
+                    + "Kembalian: " + CurrencyFormatter.format(paidOrder.getChangeAmount()));
+
+            paidAmountField.setText("");
+            refreshView();   // pesanan lama sudah PAID, keranjang baru dibuat
+            changeLabel.setText(CurrencyFormatter.format(paidOrder.getChangeAmount()));
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
+    }
+
+    private void removeItem() {
         int row = cartTable.getSelectedRow();
         if (row < 0) {
-            showError("Pilih item yang ingin dihapus.");
+            Dialogs.error(this, "Pilih item yang ingin dihapus.");
             return;
         }
-        // TODO minggu 2: orderService.removeItem(orderItemId)
-        items.remove(row);
-        refreshView();
-    }
-
-    private void cancelDummy() {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Batalkan pesanan ini?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
-        if (confirm != JOptionPane.YES_OPTION) {
+        if (!Dialogs.confirm(this, "Hapus item ini dari pesanan?")) {
             return;
         }
-        // TODO minggu 2: orderService.cancelOrder(orderId)
-        items.clear();
-        refreshView();
+
+        try {
+            orderService.removeItem(selectedItem(row).orderItemId());
+            refreshView();
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
     }
 
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    private void editQuantity() {
+        int row = cartTable.getSelectedRow();
+        if (row < 0) {
+            Dialogs.error(this, "Pilih item yang ingin diubah jumlahnya.");
+            return;
+        }
+
+        OrderItemRow item = selectedItem(row);
+        String input = JOptionPane.showInputDialog(this,
+                "Jumlah sekarang: " + item.quantity() + "\nMasukkan jumlah baru untuk "
+                + item.productName() + ":",
+                "Ubah Jumlah",
+                JOptionPane.PLAIN_MESSAGE);
+        if (input == null) {
+            return;   // dibatalkan
+        }
+
+        try {
+            int quantity;
+            try {
+                quantity = Integer.parseInt(input.trim());
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Jumlah harus berupa bilangan bulat.");
+            }
+            orderService.updateItemQuantity(item.orderItemId(), quantity);
+            refreshView();
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
     }
+
+    private void cancelOrder() {
+        if (!Dialogs.confirm(this, "Batalkan pesanan ini? Semua item akan dihapus dari keranjang.")) {
+            return;
+        }
+        try {
+            orderService.cancelOrder(orderId);
+            refreshView();
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
+    }
+
+    /** Baris tabel dan urutan list items selalu sama, jadi indeks model dipakai langsung. */
+    private OrderItemRow selectedItem(int viewRow) {
+        return items.get(cartTable.convertRowIndexToModel(viewRow));
+    }
+
+    public static void main(String args[]) {
+        java.awt.EventQueue.invokeLater(() -> {
+            CartFrame f = new CartFrame();
+            f.setLocationRelativeTo(null);
+            f.setVisible(true);
+        });
+    }
+
+    // [blok initComponents() dari Form Editor, JANGAN diubah]
+
+    // [deklarasi komponen // Variables declaration, JANGAN diubah]
+
 
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -237,24 +308,20 @@ public class CartFrame extends JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void backBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_backBtnActionPerformed
-        // TODO add your handling code here:
+        MainFrame main = new MainFrame();
+        main.setLocationRelativeTo(null);
+        main.setVisible(true);
+        dispose();
     }//GEN-LAST:event_backBtnActionPerformed
 
     private void paymentMethodComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_paymentMethodComboActionPerformed
-        // TODO add your handling code here:
+        // metode pembayaran dibaca saat tombol Bayar ditekan
     }//GEN-LAST:event_paymentMethodComboActionPerformed
 
     private void paidAmountFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_paidAmountFieldActionPerformed
-        // TODO add your handling code here:
+        pay();
     }//GEN-LAST:event_paidAmountFieldActionPerformed
 
-public static void main(String args[]) {
-    java.awt.EventQueue.invokeLater(() -> {
-            CartFrame f = new CartFrame();
-            f.setLocationRelativeTo(null);
-            f.setVisible(true);
-        });
-        }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton backBtn;
