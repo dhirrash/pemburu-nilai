@@ -4,108 +4,346 @@
  */
 package com.github.rotibakarasjad.view;
 
+import com.github.rotibakarasjad.entity.Category;
+import com.github.rotibakarasjad.entity.Product;
 import com.github.rotibakarasjad.entity.enums.Role;
+import com.github.rotibakarasjad.exception.BusinessException;
 import com.github.rotibakarasjad.service.CategoryService;
 import com.github.rotibakarasjad.service.ProductService;
+import com.github.rotibakarasjad.util.CurrencyFormatter;
 import com.github.rotibakarasjad.util.Session;
 import javax.swing.JOptionPane;
+import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
 /**
- *
- * @author HP ELTEBOOKK
+ * Panel admin: kelola produk, kategori, dan stok dalam satu layar (mode).
  */
 public class AdminFrame extends javax.swing.JFrame {
-    
-    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(AdminFrame.class.getName());
-    private String modeAktif = "PRODUK";
+
+    private static final String PRODUK = "PRODUK";
+    private static final String KATEGORI = "KATEGORI";
+    private static final String STOK = "STOK";
+
+    private static final java.util.logging.Logger logger =
+            java.util.logging.Logger.getLogger(AdminFrame.class.getName());
+
+    private String modeAktif = PRODUK;
     private final ProductService productService = new ProductService();
     private final CategoryService categoryService = new CategoryService();
-    /**
-     * Creates new form AdminFrame
-     */
+
     public AdminFrame() {
         initComponents();
         if (!Session.isLoggedIn() || Session.getCurrentUser().getRole() != Role.ADMIN) {
-            JOptionPane.showMessageDialog(this, "Akses ditolak! Anda bukan Admin.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Akses ditolak! Anda bukan Admin.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
             dispose();
             new LoginFrame().setVisible(true);
             return;
         }
-        
         setTitle("Roti Bakar Asjad - Panel Admin (" + Session.getCurrentUser().getFullName() + ")");
         setLocationRelativeTo(null);
-        aturTampilanMode("PRODUK");
+        initEvents();
+        aturTampilanMode(PRODUK);
     }
-    
+
+    private void initEvents() {
+        tblData.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblData.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                isiFormDariBaris();
+            }
+        });
+        btnSimpan.addActionListener(e -> simpan());
+        btnUbah.addActionListener(e -> ubah());
+        btnHapus.addActionListener(e -> hapus());
+    }
+
+    // ================= handler dari Form Editor (isi di sini) =================
+
+    private void btnLogoutActionPerformed(java.awt.event.ActionEvent evt) {
+        Session.logout();
+        dispose();
+        new LoginFrame().setVisible(true);
+    }
+
+    private void btnNavProdukActionPerformed(java.awt.event.ActionEvent evt) {
+        aturTampilanMode(PRODUK);
+    }
+
+    private void btnNavKategoriActionPerformed(java.awt.event.ActionEvent evt) {
+        aturTampilanMode(KATEGORI);
+    }
+
+    private void btnNavStokActionPerformed(java.awt.event.ActionEvent evt) {
+        aturTampilanMode(STOK);
+    }
+
+    private void txtInput1ActionPerformed(java.awt.event.ActionEvent evt) {
+    }
+
+    private void txtInput2ActionPerformed(java.awt.event.ActionEvent evt) {
+    }
+
+    private void txtInput3ActionPerformed(java.awt.event.ActionEvent evt) {
+    }
+
+    // ================= tampilan mode =================
+
+    /** Mengatur label, tombol, dan kolom input sesuai mode, lalu memuat tabel. */
     private void aturTampilanMode(String mode) {
-        this.modeAktif = mode;
-        txtInput1.setText("");
-        txtInput3.setText("");
-        txtInput2.setText("");
-        
-        DefaultTableModel model = new DefaultTableModel();
-        
-        if (mode.equals("PRODUK")) {
-            lblMode.setText("MODE: KELOLA PRODUK");
-            txtInput1.setText("Nama Produk:");
-            txtInput2.setText("Kategori:");
-            txtInput3.setText("Harga (Rp):");
-            txtInput2.setVisible(true);
-            txtInput3.setVisible(true);
-            txtInput3.setVisible(true);
-            txtInput2.setVisible(true);
-            btnSimpan.setText("Tambah Produk");
-            btnUbah.setVisible(true);
-            btnHapus.setText("Nonaktifkan");
-            
-            model.setColumnIdentifiers(new Object[]{"ID", "Nama Produk", "Kategori", "Harga", "Stok", "Status"});
-            model.addRow(new Object[]{1, "Roti Bakar Coklat", "Manis", 15000, 20, "Aktif"});
-            model.addRow(new Object[]{2, "Roti Bakar Keju", "Gurih", 18000, 15, "Aktif"});
-            
-        } else if (mode.equals("KATEGORI")) {
-            lblMode.setText("MODE: KELOLA KATEGORI");
-            txtInput1.setText("Nama Kategori:");
-            txtInput2.setVisible(false);
-            txtInput3.setVisible(false);
-            txtInput3.setVisible(false);
-            txtInput2.setVisible(false);
-            btnSimpan.setText("Tambah Kategori");
-            btnUbah.setVisible(true);
-            btnHapus.setText("Hapus Kategori");
-            
-            model.setColumnIdentifiers(new Object[]{"ID", "Nama Kategori", "Status Pemakaian"});
-            model.addRow(new Object[]{1, "Manis", "Dipakai Produk"});
-            model.addRow(new Object[]{2, "Gurih", "Dipakai Produk"});
-            model.addRow(new Object[]{3, "Spesial", "Kosong"});
-            
-        } else if (mode.equals("STOK")) {
-            lblMode.setText("MODE: RESTOK & PENYESUAIAN STOK");
-            txtInput1.setText("ID Produk:");
-            txtInput2.setText("Alasan (RESTOCK / ADJUSTMENT):");
-            txtInput3.setText("Jumlah (+/-):");
-            txtInput2.setVisible(true);
-            txtInput3.setVisible(true);
-            txtInput3.setVisible(true);
-            txtInput2.setVisible(true);
-            btnSimpan.setText("Update Stok");
-            btnUbah.setVisible(false);
-            btnHapus.setText("Reset Form");
-            
-            model.setColumnIdentifiers(new Object[]{"ID", "Nama Produk", "Stok Saat Ini", "Keterangan Terakhir"});
-            model.addRow(new Object[]{1, "Roti Bakar Coklat", 20, "RESTOCK (+10)"});
-            model.addRow(new Object[]{2, "Roti Bakar Keju", 15, "RESTOCK (+5)"});
+        modeAktif = mode;
+        kosongkanForm();
+
+        switch (mode) {
+            case PRODUK -> {
+                lblMode.setText("MODE: KELOLA PRODUK");
+                lblInput1.setText("Nama Produk :");
+                lblInput2.setText("Kategori :");
+                lblInput3.setText("Harga (Rp) :");
+                tampilkanInput(true, true, true);
+                btnSimpan.setText("Tambah Produk");
+                btnUbah.setText("Simpan Perubahan");
+                btnHapus.setText("Ubah Status");
+            }
+            case KATEGORI -> {
+                lblMode.setText("MODE: KELOLA KATEGORI");
+                lblInput1.setText("Nama Kategori :");
+                tampilkanInput(true, false, false);
+                btnSimpan.setText("Tambah Kategori");
+                btnUbah.setText("Ubah Nama");
+                btnHapus.setText("Hapus Kategori");
+            }
+            case STOK -> {
+                lblMode.setText("MODE: RESTOK & PENYESUAIAN STOK");
+                lblInput1.setText("Produk :");
+                lblInput2.setText("Catatan :");
+                lblInput3.setText("Jumlah (+/-) :");
+                tampilkanInput(true, true, true);
+                txtInput1.setEditable(false);
+                btnSimpan.setText("Restok (+)");
+                btnUbah.setText("Penyesuaian +/-");
+                btnHapus.setText("Bersihkan Form");
+            }
+            default -> throw new IllegalArgumentException("Mode tidak dikenal: " + mode);
         }
-        
+        btnUbah.setVisible(true);
+        btnHapus.setVisible(true);
+        muatTabel();
+    }
+
+    private void tampilkanInput(boolean input1, boolean input2, boolean input3) {
+        lblInput1.setVisible(input1);
+        txtInput1.setVisible(input1);
+        lblInput2.setVisible(input2);
+        txtInput2.setVisible(input2);
+        lblInput3.setVisible(input3);
+        txtInput3.setVisible(input3);
+    }
+
+    private void kosongkanForm() {
+        txtInput1.setText("");
+        txtInput2.setText("");
+        txtInput3.setText("");
+        txtInput1.setEditable(true);
+    }
+
+    /** Mengisi tabel dari service sesuai mode. Kolom 0 selalu berisi ID. */
+    private void muatTabel() {
+        DefaultTableModel model = new DefaultTableModel() {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        try {
+            switch (modeAktif) {
+                case PRODUK -> {
+                    model.setColumnIdentifiers(new Object[]{"ID", "Nama Produk", "Kategori",
+                        "Harga", "Stok", "Status"});
+                    for (Product p : productService.getAllProducts()) {
+                        model.addRow(new Object[]{
+                            p.getId(),
+                            p.getName(),
+                            p.getCategoryName(),
+                            CurrencyFormatter.format(p.getPrice()),
+                            p.getStock(),
+                            p.isActive() ? "Aktif" : "Nonaktif"
+                        });
+                    }
+                }
+                case KATEGORI -> {
+                    model.setColumnIdentifiers(new Object[]{"ID", "Nama Kategori", "Jumlah Produk"});
+                    for (CategoryService.CategoryUsage c : categoryService.getAllWithUsage()) {
+                        model.addRow(new Object[]{c.id(), c.name(), c.productCount()});
+                    }
+                }
+                case STOK -> {
+                    model.setColumnIdentifiers(new Object[]{"ID", "Nama Produk", "Stok Saat Ini"});
+                    for (Product p : productService.getAllProducts()) {
+                        model.addRow(new Object[]{p.getId(), p.getName(), p.getStock()});
+                    }
+                }
+                default -> {
+                }
+            }
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
         tblData.setModel(model);
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
+    /** Baris dipilih -> isi form (untuk diubah). */
+    private void isiFormDariBaris() {
+        int row = tblData.getSelectedRow();
+        if (row < 0) {
+            return;
+        }
+        switch (modeAktif) {
+            case PRODUK -> {
+                txtInput1.setText(String.valueOf(tblData.getValueAt(row, 1)));
+                txtInput2.setText(String.valueOf(tblData.getValueAt(row, 2)));
+                txtInput3.setText(String.valueOf(tblData.getValueAt(row, 3)));
+            }
+            case KATEGORI, STOK -> txtInput1.setText(String.valueOf(tblData.getValueAt(row, 1)));
+            default -> {
+            }
+        }
+    }
+
+    // ================= aksi tombol =================
+
+    private void simpan() {
+        try {
+            switch (modeAktif) {
+                case PRODUK -> {
+                    productService.createProduct(txtInput1.getText(), null,
+                            categoryIdByName(txtInput2.getText()),
+                            CurrencyFormatter.parse(txtInput3.getText()), 0);
+                    Dialogs.info(this, "Produk ditambahkan. Isi stok awal lewat menu Restok & Stok.");
+                }
+                case KATEGORI -> {
+                    categoryService.addCategory(txtInput1.getText());
+                    Dialogs.info(this, "Kategori ditambahkan.");
+                }
+                case STOK -> {
+                    productService.restock(selectedId(), parseBilangan(txtInput3.getText()),
+                            txtInput2.getText());
+                    Dialogs.info(this, "Stok berhasil ditambah.");
+                }
+                default -> {
+                }
+            }
+            aturTampilanMode(modeAktif);
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
+    }
+
+    private void ubah() {
+        try {
+            switch (modeAktif) {
+                case PRODUK -> {
+                    productService.updateProduct(selectedId(), txtInput1.getText(),
+                            categoryIdByName(txtInput2.getText()),
+                            CurrencyFormatter.parse(txtInput3.getText()));
+                    Dialogs.info(this, "Data produk diperbarui.");
+                }
+                case KATEGORI -> {
+                    categoryService.renameCategory(selectedId(), txtInput1.getText());
+                    Dialogs.info(this, "Nama kategori diperbarui.");
+                }
+                case STOK -> {
+                    productService.adjustStock(selectedId(), parseBilangan(txtInput3.getText()),
+                            txtInput2.getText());
+                    Dialogs.info(this, "Stok berhasil disesuaikan.");
+                }
+                default -> {
+                }
+            }
+            aturTampilanMode(modeAktif);
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
+    }
+
+    private void hapus() {
+        try {
+            switch (modeAktif) {
+                case PRODUK -> {
+                    boolean aktif = "Aktif".equals(tblData.getValueAt(selectedRow(), 5));
+                    String aksi = aktif ? "menonaktifkan" : "mengaktifkan";
+                    if (Dialogs.confirm(this, "Yakin ingin " + aksi + " produk ini?\n"
+                            + "Produk nonaktif tidak tampil di katalog kasir.")) {
+                        productService.setActive(selectedId(), !aktif);
+                        aturTampilanMode(modeAktif);
+                    }
+                }
+                case KATEGORI -> {
+                    if (Dialogs.confirm(this, "Hapus kategori ini?")) {
+                        categoryService.deleteCategory(selectedId());
+                        aturTampilanMode(modeAktif);
+                    }
+                }
+                case STOK -> aturTampilanMode(modeAktif);
+                default -> {
+                }
+            }
+        } catch (Exception ex) {
+            Dialogs.handle(this, ex);
+        }
+    }
+
+    // ================= helper =================
+
+    private int selectedRow() {
+        int row = tblData.getSelectedRow();
+        if (row < 0) {
+            throw new BusinessException("Pilih baris pada tabel terlebih dahulu.");
+        }
+        return row;
+    }
+
+    private int selectedId() {
+        return (Integer) tblData.getValueAt(selectedRow(), 0);
+    }
+
+    /** Nama kategori dari form -> id kategori (tidak peka huruf besar/kecil). */
+    private int categoryIdByName(String nama) {
+        String dicari = nama == null ? "" : nama.trim();
+        for (Category c : categoryService.findAll()) {
+            if (c.getName().equalsIgnoreCase(dicari)) {
+                return c.getId();
+            }
+        }
+        throw new BusinessException("Kategori \"" + dicari
+                + "\" tidak ditemukan. Tambahkan dulu di menu Kelola Kategori.");
+    }
+
+    /** Bilangan bulat, boleh negatif. */
+    private static int parseBilangan(String text) {
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException ex) {
+            throw new BusinessException("Jumlah harus berupa bilangan bulat.");
+        }
+    }
+
+    public static void main(String args[]) {
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info
+                    : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
+            logger.log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        java.awt.EventQueue.invokeLater(() -> new AdminFrame().setVisible(true));
+    }
+
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -263,172 +501,6 @@ public class AdminFrame extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void btnLogoutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLogoutActionPerformed
-        // TODO add your handling code here:
-        Session.logout();
-        dispose();
-        new LoginFrame().setVisible(true);
-    }//GEN-LAST:event_btnLogoutActionPerformed
-
-    private void btnNavProdukActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNavProdukActionPerformed
-        // TODO add your handling code here:
-        aturTampilanMode("PRODUK");
-    }//GEN-LAST:event_btnNavProdukActionPerformed
-
-    private void btnNavKategoriActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNavKategoriActionPerformed
-        // TODO add your handling code here:
-        aturTampilanMode("KATEGORI");
-    }//GEN-LAST:event_btnNavKategoriActionPerformed
-
-    private void btnNavStokActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNavStokActionPerformed
-        // TODO add your handling code here:
-        aturTampilanMode("STOK");
-    }//GEN-LAST:event_btnNavStokActionPerformed
-    
-    private void btnSimpanActionPerformed(java.awt.event.ActionEvent evt) {                                          
-        try {
-            DefaultTableModel model = (DefaultTableModel) tblData.getModel();
-            if (modeAktif.equals("PRODUK")) {
-                String nama = txtInput1.getText();
-                String kategori = txtInput2.getText();
-                double harga = Double.parseDouble(txtInput3.getText());
-                
-                productService.saveProduct(nama, kategori, harga, 0);
-                model.addRow(new Object[]{model.getRowCount() + 1, nama, kategori, harga, 0, "Aktif"});
-                JOptionPane.showMessageDialog(this, "Produk berhasil ditambahkan!");
-                
-            } else if (modeAktif.equals("KATEGORI")) {
-                String namaKategori = txtInput1.getText();
-                categoryService.addCategory(namaKategori);
-                model.addRow(new Object[]{model.getRowCount() + 1, namaKategori, "Kosong"});
-                JOptionPane.showMessageDialog(this, "Kategori berhasil ditambahkan!");
-                
-            } else if (modeAktif.equals("STOK")) {
-                int idProduk = Integer.parseInt(txtInput1.getText());
-                String alasan = txtInput2.getText().toUpperCase();
-                int qty = Integer.parseInt(txtInput3.getText());
-                
-                productService.adjustStock(idProduk, qty, alasan, "Update via Admin");
-                JOptionPane.showMessageDialog(this, "Stok berhasil diperbarui!");
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Input angka tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Validasi Gagal", JOptionPane.WARNING_MESSAGE);
-        }
-    }
-    
-    private void btnUbahActionPerformed(java.awt.event.ActionEvent evt) {                                        
-        int row = tblData.getSelectedRow();
-        if (row == -1) {
-            JOptionPane.showMessageDialog(this, "Pilih baris pada tabel terlebih dahulu!");
-            return;
-        }
-        DefaultTableModel model = (DefaultTableModel) tblData.getModel();
-        if (modeAktif.equals("PRODUK")) {
-            model.setValueAt(txtInput1.getText(), row, 1);
-            model.setValueAt(txtInput2.getText(), row, 2);
-            model.setValueAt(txtInput3.getText(), row, 3);
-            JOptionPane.showMessageDialog(this, "Data produk diperbarui!");
-        } else if (modeAktif.equals("KATEGORI")) {
-            model.setValueAt(txtInput1.getText(), row, 1);
-            JOptionPane.showMessageDialog(this, "Nama kategori diperbarui!");
-        }
-    }
-    
-    private void btnHapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHapusActionPerformed
-        int row = tblData.getSelectedRow();
-        if (modeAktif.equals("STOK")) {
-            txtInput1.setText("");
-            txtInput2.setText("");
-            txtInput3.setText("");
-            return;
-        }
-        if (row == -1) {
-            JOptionPane.showMessageDialog(this, "Pilih baris pada tabel terlebih dahulu!");
-            return;
-        }
-        DefaultTableModel model = (DefaultTableModel) tblData.getModel();
-        if (modeAktif.equals("PRODUK")) {
-            // Sesuai aturan README: Produk dinonaktifkan, bukan dihapus permanen
-            model.setValueAt("Nonaktif", row, 5);
-            JOptionPane.showMessageDialog(this, "Produk dinonaktifkan.");
-        } else if (modeAktif.equals("KATEGORI")) {
-            try {
-                int id = Integer.parseInt(model.getValueAt(row, 0).toString());
-                boolean dipakai = model.getValueAt(row, 2).toString().equals("Dipakai Produk");
-                categoryService.deleteCategory(id, dipakai);
-                model.removeRow(row);
-                JOptionPane.showMessageDialog(this, "Kategori berhasil dihapus.");
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, e.getMessage(), "Gagal Hapus", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }//GEN-LAST:event_btnHapusActionPerformed
-    
-    private void tblDataMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tblDataMouseClicked
-        int row = tblData.getSelectedRow();
-        if (row != -1) {
-            DefaultTableModel model = (DefaultTableModel) tblData.getModel();
-            if (modeAktif.equals("PRODUK")) {
-                txtInput1.setText(model.getValueAt(row, 1).toString());
-                txtInput2.setText(model.getValueAt(row, 2).toString());
-                txtInput3.setText(model.getValueAt(row, 3).toString());
-            } else if (modeAktif.equals("KATEGORI")) {
-                txtInput1.setText(model.getValueAt(row, 1).toString());
-            } else if (modeAktif.equals("STOK")) {
-                txtInput1.setText(model.getValueAt(row, 0).toString());
-            }
-        }
-    }//GEN-LAST:event_tblDataMouseClicked
-    
-    private void txtInput1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtInput1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txtInput1ActionPerformed
-
-    private void txtInput2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtInput2ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txtInput2ActionPerformed
-
-    private void txtInput3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtInput3ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txtInput3ActionPerformed
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new AdminFrame().setVisible(true));
-    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnHapus;
