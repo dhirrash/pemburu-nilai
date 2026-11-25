@@ -117,6 +117,43 @@ public class ProductRepository {
         }
     }
 
+    /* Versi transaksi: insert produk memakai koneksi milik service. */
+    public int insert(Connection conn, Product product) throws SQLException {
+        String sql = "INSERT INTO products (category_id, name, description, price, stock, is_active) "
+                   + "VALUES (?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setInt(1, product.getCategoryId());
+            stmt.setString(2, product.getName());
+            stmt.setString(3, product.getDescription());
+            stmt.setBigDecimal(4, product.getPrice());
+            stmt.setInt(5, product.getStock());
+            stmt.setBoolean(6, product.isActive());
+            stmt.executeUpdate();
+            try (ResultSet keys = stmt.getGeneratedKeys()) {
+                if (keys.next()) {
+                    product.setId(keys.getInt(1));
+                    return product.getId();
+                }
+                throw new SQLException("Id produk tidak dikembalikan database.");
+            }
+        }
+    }
+
+    /* Versi transaksi: ubah data produk (stok tidak diubah di sini). */
+    public void update(Connection conn, Product product) throws SQLException {
+        String sql = "UPDATE products SET category_id = ?, name = ?, description = ?, "
+                   + "price = ?, is_active = ? WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, product.getCategoryId());
+            stmt.setString(2, product.getName());
+            stmt.setString(3, product.getDescription());
+            stmt.setBigDecimal(4, product.getPrice());
+            stmt.setBoolean(5, product.isActive());
+            stmt.setInt(6, product.getId());
+            stmt.executeUpdate();
+        }
+    }
+
     private List<Product> queryList(String sql) throws SQLException {
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
